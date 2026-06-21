@@ -679,7 +679,7 @@ def ussd():
             )
 
         if text == '0':
-            return _ussd("END Thank you for using the ULK Marks Appeal System. Goodbye.")
+            return _ussd("END Thank you for using the ULK Marks Appeal System. Goodbye.see you soon")
 
         # ════════════════════════════════════════════════════════════════════
         # 1. VIEW MARKS  (Student: view marks / view results)
