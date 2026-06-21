@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Results — HOD Portal{% endblock %}
+
+{% block content %}
+<div class="min-h-screen">
+  <!-- Navbar -->
+  <nav class="bg-gray-900/80 backdrop-blur-lg border-b border-amber-500/20 px-4 sm:px-6 py-4 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
+      <div class="flex items-center gap-3">
+        <div
+          class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30 flex-shrink-0">
+          <i data-lucide="graduation-cap" class="w-5 h-5 text-white"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-lg font-bold text-white truncate">Manage Results</h1>
+          <p class="text-xs text-amber-400 font-medium">HOD Portal</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 sm:gap-4">
+        <a href="/hod/dashboard"
+          class="flex items-center gap-1 px-3 py-2 text-xs sm:text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Appeals</span>
+        </a>
+        <a href="/logout"
+          class="flex items-center gap-1 px-3 py-2 text-xs sm:text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Logout</span>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div class="flash-message flash-{{ cat }} mb-6 flex items-center gap-3">
+      {% if cat == 'success' %}
+      <i data-lucide="check-circle" class="w-5 h-5 flex-shrink-0"></i>
+      {% else %}
+      <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0"></i>
+      {% endif %}
+      <span>{{ msg }}</span>
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    <!-- Search Bar -->
+    <div class="mb-6">
+      <form method="GET" action="/hod/manage_results" class="flex gap-2">
+        <input type="text" name="q" value="{{ search }}"
+          class="input-field flex-1" placeholder="Search by student ID, name, or module...">
+        <button type="submit" class="btn-primary px-4">
+          <i data-lucide="search" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Add New Mark Form -->
+    <div class="mb-8">
+      <h2 class="text-lg font-semibold text-amber-400 flex items-center gap-2 mb-6">
+        <i data-lucide="plus-circle" class="w-5 h-5"></i>
+        Add New Mark
+      </h2>
+      <div class="glass-card rounded-xl p-4 sm:p-6">
+        <form method="POST" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <input type="hidden" name="action" value="add">
+          <div>
+            <label class="block text-xs text-gray-400 mb-2">Student</label>
+            <select name="student_id" class="input-field">
+              {% for st in students %}
+              <option value="{{ st.student_id }}">{{ st.student_id }} — {{ st.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-2">Module Name</label>
+            <select name="module_name" class="input-field">
+              <option value="">-- Select module --</option>
+              {% for m in modules %}
+              <option value="{{ m }}">{{ m }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-2">Or new module</label>
+            <input type="text" name="module_name_new" class="input-field" placeholder="New module name">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-2">Mark (0–100)</label>
+            <input type="number" name="mark" min="0" max="100" class="input-field" placeholder="0-100" required>
+          </div>
+          <button type="submit" class="btn-primary flex items-center justify-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Add Mark
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Results Table -->
+    <div>
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-lg font-semibold text-amber-400 flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5"></i>
+          All Student Results
+          <span class="text-sm text-gray-500 font-normal">({{ total_marks }} total)</span>
+        </h2>
+      </div>
+      <div class="table-container overflow-x-auto">
+        <table class="custom-table min-w-[700px]">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Student ID</th>
+              <th>Name</th>
+              <th>Module</th>
+              <th>Mark</th>
+              <th>Updated By</th>
+              <th>Updated At</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in results %}
+            {% if not search or search.lower() in r.student_id.lower() or search.lower() in r.name.lower() or search.lower() in r.module_name.lower() %}
+            <tr>
+              <td class="text-gray-400">{{ r.id }}</td>
+              <td>
+                <code class="text-cyan-400 text-xs bg-cyan-500/10 px-2 py-1 rounded">{{ r.student_id }}</code>
+              </td>
+              <td class="font-medium text-white">{{ r.name }}</td>
+              <td class="text-gray-300">{{ r.module_name }}</td>
+              <td>
+                {% set m = r.mark|int(-1) %}
+                {% if m >= 0 %}
+                  {% if m >= 80 %}<span class="badge badge-green">{{ m }} <span class="opacity-60">(A)</span></span>
+                  {% elif m >= 70 %}<span class="badge badge-teal">{{ m }} <span class="opacity-60">(B+)</span></span>
+                  {% elif m >= 60 %}<span class="badge badge-teal">{{ m }} <span class="opacity-60">(B)</span></span>
+                  {% elif m >= 55 %}<span class="badge badge-amber">{{ m }} <span class="opacity-60">(C+)</span></span>
+                  {% elif m >= 50 %}<span class="badge badge-amber">{{ m }} <span class="opacity-60">(C)</span></span>
+                  {% elif m >= 40 %}<span class="badge badge-orange" style="background:rgba(244,162,97,0.15);color:#f4a261;border:1px solid rgba(244,162,97,0.3)">{{ m }} <span class="opacity-60">(D)</span></span>
+                  {% else %}<span class="badge badge-red">{{ m }} <span class="opacity-60">(F)</span></span>{% endif %}
+                {% else %}
+                  {% set first = r.mark|upper|first %}
+                  {% if first == 'A' %}<span class="badge badge-green">{{ r.mark }}</span>
+                  {% elif first == 'B' %}<span class="badge badge-teal">{{ r.mark }}</span>
+                  {% elif first == 'C' %}<span class="badge badge-amber">{{ r.mark }}</span>
+                  {% elif first == 'D' %}<span class="badge badge-orange" style="background:rgba(244,162,97,0.15);color:#f4a261;border:1px solid rgba(244,162,97,0.3)">{{ r.mark }}</span>
+                  {% else %}<span class="badge badge-red">{{ r.mark }}</span>{% endif %}
+                {% endif %}
+              </td>
+              <td class="text-gray-400 text-sm">{{ r.updated_by or '—' }}</td>
+              <td class="text-gray-400 text-sm whitespace-nowrap">{{ r.updated_at or '—' }}</td>
+              <td>
+                <form method="POST" class="flex gap-1 items-center">
+                  <input type="hidden" name="action" value="update">
+                  <input type="hidden" name="student_id" value="{{ r.student_id }}">
+                  <input type="hidden" name="module_name" value="{{ r.module_name }}">
+                  <input type="number" name="mark" min="0" max="100" value="{{ r.mark|int(-1) if r.mark|int(-1) >= 0 else r.mark }}"
+                    class="input-field text-xs py-1.5 px-2 w-14 sm:w-16 text-center" title="Enter 0-100">
+                  {% set m = r.mark|int(-1) %}
+                  {% if m >= 0 %}
+                    {% if m >= 80 %}<span class="badge badge-green text-[10px] px-1.5 py-0.5">A</span>
+                    {% elif m >= 70 %}<span class="badge badge-teal text-[10px] px-1.5 py-0.5">B+</span>
+                    {% elif m >= 60 %}<span class="badge badge-teal text-[10px] px-1.5 py-0.5">B</span>
+                    {% elif m >= 55 %}<span class="badge badge-amber text-[10px] px-1.5 py-0.5">C+</span>
+                    {% elif m >= 50 %}<span class="badge badge-amber text-[10px] px-1.5 py-0.5">C</span>
+                    {% elif m >= 40 %}<span class="badge badge-orange text-[10px] px-1.5 py-0.5" style="background:rgba(244,162,97,0.15);color:#f4a261;border:1px solid rgba(244,162,97,0.3)">D</span>
+                    {% else %}<span class="badge badge-red text-[10px] px-1.5 py-0.5">F</span>{% endif %}
+                  {% endif %}
+                  <button type="submit"
+                    class="px-2 py-1.5 bg-amber-500 hover:bg-amber-600 text-gray-900 text-xs font-semibold rounded-lg transition-colors">
+                    Save
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endif %}
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-gray-500 py-12">
+                <i data-lucide="file-text" class="w-12 h-12 mx-auto mb-3 text-gray-600"></i>
+                <p>{{ 'No results match your search.' if search else 'No results found.' }}</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}">&laquo; Prev</a>
+        {% else %}<span class="disabled">&laquo; Prev</span>{% endif %}
+        <span class="active">{{ page }}</span>
+        {% if page < total_pages %}
+        <a href="?page={{ page + 1 }}">Next &raquo;</a>
+        {% else %}<span class="disabled">Next &raquo;</span>{% endif %}
+        <span class="text-xs text-gray-500 ml-2">Page {{ page }} of {{ total_pages }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
