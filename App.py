@@ -284,23 +284,24 @@ def admin_dashboard():
     """, (per_page, (page - 1) * per_page))
     audit_log = c.fetchall()
 
-    # Paginated students
-    c.execute("SELECT COUNT(*) AS cnt FROM students")
+    # Paginated students (exclude template)
+    c.execute("SELECT COUNT(*) AS cnt FROM students WHERE student_id != '__TEMPLATE__'")
     student_total = c.fetchone()['cnt']
-    c.execute("SELECT student_id, name, phone FROM students ORDER BY name LIMIT %s OFFSET %s",
+    c.execute("SELECT student_id, name, phone FROM students WHERE student_id != '__TEMPLATE__' ORDER BY name LIMIT %s OFFSET %s",
               (per_page, (page - 1) * per_page))
     all_students = c.fetchall()
 
-    # All modules (distinct from marks)
-    c.execute("SELECT DISTINCT module_name FROM marks ORDER BY module_name")
+    # All modules (distinct from marks, exclude template)
+    c.execute("SELECT DISTINCT module_name FROM marks WHERE student_id != '__TEMPLATE__' ORDER BY module_name")
     all_modules = [r['module_name'] for r in c.fetchall()]
 
-    # All marks for grade display
+    # All marks for grade display (exclude template)
     c.execute("""
         SELECT m.id, m.student_id, s.name, m.module_name, m.mark,
                m.updated_by, m.updated_at
         FROM   marks m
         JOIN   students s ON m.student_id = s.student_id
+        WHERE  m.student_id != '__TEMPLATE__'
         ORDER  BY m.student_id, m.module_name
     """)
     all_marks = c.fetchall()
@@ -419,6 +420,31 @@ def admin_add_module():
         flash(f'✅ Module "{module_name}" added.', 'success')
     except Exception as e:
         flash(f'❌ Error: {e}', 'danger')
+    return redirect(url_for('admin_dashboard', tab='modules'))
+
+
+@app.route('/admin/rename_module', methods=['POST'])
+@admin_required
+def admin_rename_module():
+    old_name = request.form.get('old_name', '').strip()
+    new_name = request.form.get('new_name', '').strip()
+    if not old_name or not new_name:
+        flash('Both old and new module names are required.', 'danger')
+        return redirect(url_for('admin_dashboard', tab='modules'))
+    c = cur(False)
+    c.execute("UPDATE marks SET module_name=%s WHERE module_name=%s", (new_name, old_name))
+    mysql.connection.commit()
+    flash(f'✅ Module renamed from "{old_name}" to "{new_name}".', 'success')
+    return redirect(url_for('admin_dashboard', tab='modules'))
+
+
+@app.route('/admin/delete_module/<path:module_name>', methods=['POST'])
+@admin_required
+def admin_delete_module(module_name):
+    c = cur(False)
+    c.execute("DELETE FROM marks WHERE module_name=%s", (module_name,))
+    mysql.connection.commit()
+    flash(f'🗑️ Module "{module_name}" and all its marks deleted.', 'success')
     return redirect(url_for('admin_dashboard', tab='modules'))
 
 
@@ -615,7 +641,7 @@ def hod_manage_results():
 
         elif action == 'add':
             student_id  = request.form['student_id']
-            module_name = request.form.get('module_name') or request.form.get('module_name_new', '').strip()
+            module_name = request.form.get('module_name', '').strip()
             mark        = request.form['mark']
             c2 = cur(False)
             c2.execute(
@@ -628,25 +654,26 @@ def hod_manage_results():
     page = int(request.args.get('page', 1))
     per_page = 10
 
-    # Count total marks
-    c.execute("SELECT COUNT(*) AS cnt FROM marks")
+    # Count total marks (exclude template)
+    c.execute("SELECT COUNT(*) AS cnt FROM marks WHERE student_id != '__TEMPLATE__'")
     total_marks = c.fetchone()['cnt']
 
-    # Paginated student results
+    # Paginated student results (exclude template)
     c.execute("""
         SELECT m.id, m.student_id, s.name, m.module_name, m.mark,
                m.updated_by, m.updated_at
         FROM   marks m
         JOIN   students s ON m.student_id = s.student_id
+        WHERE  m.student_id != '__TEMPLATE__'
         ORDER  BY m.student_id, m.module_name
         LIMIT %s OFFSET %s
     """, (per_page, (page - 1) * per_page))
     results = c.fetchall()
 
-    c.execute("SELECT student_id, name FROM students ORDER BY name")
+    c.execute("SELECT student_id, name FROM students WHERE student_id != '__TEMPLATE__' ORDER BY name")
     students = c.fetchall()
 
-    c.execute("SELECT DISTINCT module_name FROM marks ORDER BY module_name")
+    c.execute("SELECT DISTINCT module_name FROM marks WHERE student_id != '__TEMPLATE__' ORDER BY module_name")
     modules = [r['module_name'] for r in c.fetchall()]
 
     search = request.args.get('q', '').strip()
